@@ -5,6 +5,7 @@ using CdkDotnet.Models;
 using CdkDotnet.StackProperties;
 using Constructs;
 using System.IO;
+using System.Reflection;
 
 namespace CdkDotnet.NestedStacks
 {
@@ -16,11 +17,12 @@ namespace CdkDotnet.NestedStacks
             : base(scope, id, props)
         {
             // Load the content of the script files
-            var configureAdContent = File.ReadAllText("./Scripts/Configure-AD.ps1");
-            var generateCredspecContent = File.ReadAllText("./Scripts/Generate-CredSpec.ps1");
-            var addEcsInstancesToAdContent = File.ReadAllText("./Scripts/Add-ECSContainerInstancesToADGroup.ps1");
-            var configureDbContent = File.ReadAllText("./Scripts/Configure-Database.ps1");
-            var loginSqlContent = File.ReadAllText("./Scripts/login.sql");
+            var excutingAssemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var configureAdContent = File.ReadAllText($"{excutingAssemblyLocation}/Scripts/Configure-AD.ps1");
+            var generateCredspecContent = File.ReadAllText($"{excutingAssemblyLocation}/Scripts/Generate-CredSpec.ps1");
+            var addEcsInstancesToAdContent = File.ReadAllText($"{excutingAssemblyLocation}/Scripts/Add-ECSContainerInstancesToADGroup.ps1");
+            var configureDbContent = File.ReadAllText($"{excutingAssemblyLocation}/Scripts/Configure-Database.ps1");
+            var loginSqlContent = File.ReadAllText($"{excutingAssemblyLocation}/Scripts/login.sql");
 
             // Replace variable values in the script files
             var replaceAdVariables = (string content) =>

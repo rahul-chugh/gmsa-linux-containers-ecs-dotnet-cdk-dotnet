@@ -12,6 +12,9 @@ using CdkDotnet.Models;
 using Constructs;
 using System.Collections.Generic;
 using System.Text.Json;
+using static Amazon.CDK.AWS.DirectoryService.CfnMicrosoftAD;
+using static Amazon.CDK.AWS.SSM.CfnAssociation;
+using System;
 
 namespace CdkDotnet.NestedStacks
 {
@@ -110,10 +113,10 @@ namespace CdkDotnet.NestedStacks
                     Name = adInfo.DomainName,
                     Password = activeDirectoryAdminPasswordSecret.SecretValue.UnsafeUnwrap(),
                     Edition = "Standard",
-                    VpcSettings = new
+                    VpcSettings = new VpcSettingsProperty
                     {
-                        vpcId = vpc.VpcId,
-                        subnetIds = new[] { vpc.PrivateSubnets[0].SubnetId, vpc.PrivateSubnets[1].SubnetId }
+                        VpcId = vpc.VpcId,
+                        SubnetIds = new string[] { vpc.PrivateSubnets[0].SubnetId, vpc.PrivateSubnets[1].SubnetId }
                     }
                 }
             );
@@ -238,24 +241,26 @@ namespace CdkDotnet.NestedStacks
                 new CfnDocumentProps
                 {
                     DocumentType = "Command",
-                    Content = new
-                    {
-                        schemaVersion = "2.2",
-                        description = $"Joins an EC2 instance to the {activeDirectory.Name} domain using seamless joining",
-                        mainSteps = new[]
-                            {
-                            new
-                            {
-                                action = "aws:domainJoin",
-                                name = "domainJoin",
-                                inputs = new
+                    Content = JsonSerializer.Serialize(
+                        new
+                        {
+                            schemaVersion = "2.2",
+                            description = $"Joins an EC2 instance to the {activeDirectory.Name} domain using seamless joining",
+                            mainSteps = new[]
                                 {
-                                    directoryId = activeDirectory.AttrAlias,
-                                    directoryName = activeDirectory.Name
+                                new
+                                {
+                                    action = "aws:domainJoin",
+                                    name = "domainJoin",
+                                    inputs = new
+                                    {
+                                        directoryId = activeDirectory.AttrAlias,
+                                        directoryName = activeDirectory.Name
+                                    }
                                 }
                             }
                         }
-                    }
+                    )
                 }
             );
 
@@ -278,36 +283,38 @@ namespace CdkDotnet.NestedStacks
                 new CfnDocumentProps
                 {
                     DocumentType = "Command",
-                    Content = new
-                    {
-                        schemaVersion = "2.2",
-                        description = $"Joins an ECS container instance to the {activeDirectory.Name} domain using the realm CLI",
-                        mainSteps = new[]
+                    Content = JsonSerializer.Serialize(
+                        new
                         {
-                            new
+                            schemaVersion = "2.2",
+                            description = $"Joins an ECS container instance to the {activeDirectory.Name} domain using the realm CLI",
+                            mainSteps = new[]
                             {
-                                action = "aws:runShellScript",
-                                name = "domainJoinEcs",
-                                inputs = new
+                                new
                                 {
-                                    timeoutSeconds = "160",
-                                    runCommand = new []
+                                    action = "aws:runShellScript",
+                                    name = "domainJoinEcs",
+                                    inputs = new
                                     {
-                                        "echo \"Waiting 80 seconds...\"",
-                                        "sleep 80s",
-                                        "sudo dnf install jq -y",
-                                        "echo \"Retrieving AD admin password...\"",
-                                        $"adAdminPassword=$(aws secretsmanager get-secret-value --secret-id {activeDirectoryAdminPasswordSecret.SecretName})",
-                                        "echo \"Joining the AD domain...\"",
-                                        $"echo \"${{adAdminPassword}}\" | jq -r '.SecretString' | sudo realm join -U {adInfo.AdminUsername}@{activeDirectory.Name.ToUpper()} {activeDirectory.Name} --verbose",
-                                        "echo \"Restaring the ECS container instance...\"",
-                                        "sudo systemctl stop ecs",
-                                        "sudo systemctl start ecs"
+                                        timeoutSeconds = "160",
+                                        runCommand = new []
+                                        {
+                                            "echo \"Waiting 80 seconds...\"",
+                                            "sleep 80s",
+                                            "sudo dnf install jq -y",
+                                            "echo \"Retrieving AD admin password...\"",
+                                            $"adAdminPassword=$(aws secretsmanager get-secret-value --secret-id {activeDirectoryAdminPasswordSecret.SecretName})",
+                                            "echo \"Joining the AD domain...\"",
+                                            $"echo \"${{adAdminPassword}}\" | jq -r '.SecretString' | sudo realm join -U {adInfo.AdminUsername}@{activeDirectory.Name.ToUpper()} {activeDirectory.Name} --verbose",
+                                            "echo \"Restaring the ECS container instance...\"",
+                                            "sudo systemctl stop ecs",
+                                            "sudo systemctl start ecs"
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
+                    )
                 }
             );
 
@@ -326,12 +333,12 @@ namespace CdkDotnet.NestedStacks
                     {
                         AssociationName = $"{props.SolutionId}-AD-Domian-Join",
                         Name = domainJoinSsmDocument.Ref,
-                        Targets = new[]
+                        Targets = new TargetProperty[]
                         {
-                            new
+                            new TargetProperty
                             {
-                                key = $"tag:{ecsInstanceTagKey}",
-                                values = new [] { props.SolutionId }
+                                Key = $"tag:{ecsInstanceTagKey}",
+                                Values = new [] { props.SolutionId }
                             }
                         }
                     }
@@ -343,19 +350,19 @@ namespace CdkDotnet.NestedStacks
                     {
                         AssociationName = $"{props.SolutionId}-AD-Domian-Join-Alt",
                         Name = domainJoinSsmDocumentAtl.Ref,
-                        Targets = new[]
+                        Targets = new TargetProperty[]
                         {
-                            new
+                            new TargetProperty
                             {
-                                key = $"tag:{ecsInstanceTagKey}",
-                                values = new [] { props.SolutionId }
+                                Key = $"tag:{ecsInstanceTagKey}",
+                                Values = new [] { props.SolutionId }
                             }
                         }
                     }
                 );
 
                 // Applies the tag to the ECS instances
-                TagManager.Of(ecsAutoScalingGroup).SetTag(ecsInstanceTagKey, props.SolutionId);
+                Amazon.CDK.Tags.Of(ecsAutoScalingGroup).Add(ecsInstanceTagKey, props.SolutionId);
 
                 // Grants read access for the seamless domain join secret to the ECS ASG
                 activeDirectorySeamlessJoinSecret.GrantRead(ecsAutoScalingGroup.Role);
