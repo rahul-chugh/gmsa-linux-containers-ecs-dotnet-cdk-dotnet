@@ -2,7 +2,7 @@
 
 namespace CdkDotnet.StackProperties
 {
-    internal class InfrastructureStackProps : StackProps
+    internal class InfrastructureStackProps : NestedStackProps
     {
         public string SolutionId { get; set; }
         public string EcsInstanceKeyPairName { get; set; }

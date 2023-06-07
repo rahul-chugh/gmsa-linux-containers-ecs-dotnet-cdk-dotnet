@@ -4,7 +4,7 @@ using Amazon.CDK.AWS.SSM;
 
 namespace CdkDotnet.StackProperties
 {
-    internal class ApplicationStackProps : StackProps
+    internal class ApplicationStackProps : NestedStackProps
     {
         public string SolutionId { get; set; }
         public Vpc Vpc { get; set; }

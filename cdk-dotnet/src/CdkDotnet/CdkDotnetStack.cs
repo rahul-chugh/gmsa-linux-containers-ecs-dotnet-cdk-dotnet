@@ -16,7 +16,6 @@ namespace CdkDotnet
             var infraStack = new InfrastructureStack(this, $"{ConfigProps.SOLUTION_ID}-infrastructure", 
                 new InfrastructureStackProps
                 {
-                    Env = props.Env,
                     SolutionId = ConfigProps.SOLUTION_ID,
                     EcsInstanceKeyPairName = ConfigProps.EC2_INSTANCE_KEYPAIR_NAME,
                     DomianJoinedEcsInstances = ConfigProps.DOMAIN_JOIN_ECS
@@ -27,7 +26,6 @@ namespace CdkDotnet
             var dbStack = new DatabaseStack(this, $"{ConfigProps.SOLUTION_ID}-database", 
                 new DatabaseStackProps
                 {
-                    Env = props.Env,
                     SolutionId = ConfigProps.SOLUTION_ID,
                     Vpc = infraStack.Vpc,
                     ActiveDirectoryId = infraStack.ActiveDirectory.AttrAlias
@@ -38,7 +36,6 @@ namespace CdkDotnet
             var bastionStack = new BastionHostStack(this, $"{ConfigProps.SOLUTION_ID}-bastion", 
                 new BastionHostStackProps 
                 {
-                    Env = props.Env,
                     SolutionId = ConfigProps.SOLUTION_ID,
                     Vpc = infraStack.Vpc,
                     AdInfo = infraStack.AdInfo,
@@ -58,7 +55,6 @@ namespace CdkDotnet
                 new ApplicationStack(this, $"{ConfigProps.SOLUTION_ID}-application", 
                     new ApplicationStackProps
                     {
-                        Env = props.Env,
                         SolutionId = ConfigProps.SOLUTION_ID,
                         Vpc = infraStack.Vpc,
                         EcsAsgSecurityGroup = infraStack.EcsAsgSecurityGroup,

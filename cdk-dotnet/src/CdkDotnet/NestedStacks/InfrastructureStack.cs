@@ -18,7 +18,7 @@ using System;
 
 namespace CdkDotnet.NestedStacks
 {
-    internal class InfrastructureStack : Stack
+    internal class InfrastructureStack : NestedStack
     {
         //Reference to the VPC created
         public Vpc Vpc { get; set; }

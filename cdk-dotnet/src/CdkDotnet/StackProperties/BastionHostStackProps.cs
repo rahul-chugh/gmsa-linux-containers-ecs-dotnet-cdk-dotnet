@@ -8,7 +8,7 @@ using CdkDotnet.Models;
 
 namespace CdkDotnet.StackProperties
 {
-    internal class BastionHostStackProps : StackProps
+    internal class BastionHostStackProps : NestedStackProps
     {
         public string SolutionId { get; set; }
         public Vpc Vpc { get; set; }

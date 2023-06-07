@@ -11,7 +11,7 @@ namespace CdkDotnet.NestedStacks
 {
     // Deploy a Windows EC2 instance to manage the Active Directory.
     // In a typical deployment, this instance is likely unnecessary.
-    internal class BastionHostStack : Stack
+    internal class BastionHostStack : NestedStack
     {
         public BastionHostStack(Construct scope, string id, BastionHostStackProps props = null)
             : base(scope, id, props)

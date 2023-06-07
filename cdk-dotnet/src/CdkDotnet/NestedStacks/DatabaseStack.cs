@@ -8,7 +8,7 @@ using Constructs;
 
 namespace CdkDotnet.NestedStacks
 {
-    internal class DatabaseStack : Stack
+    internal class DatabaseStack : NestedStack
     {
         // Reference to the SQL Server RDS instance created
         public DatabaseInstance SqlServerInstance { get; set; }

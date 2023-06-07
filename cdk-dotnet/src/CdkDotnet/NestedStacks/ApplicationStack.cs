@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace CdkDotnet.NestedStacks
 {
-    internal class ApplicationStack : Stack
+    internal class ApplicationStack : NestedStack
     {
         public ApplicationStack(Construct scope, string id, ApplicationStackProps props = null)
             : base(scope, id, props)
