@@ -62,20 +62,20 @@ namespace CdkDotnet.NestedStacks
                 "Write-Output \"Writing support scripts...\"",
                 "Remove-Item \"C:\\SampleConfig\" -Force -Recurse -ErrorAction SilentlyContinue",
                 "New-Item \"C:\\SampleConfig\" -itemType Directory",
-                $"Set-Content-Path \"C:\\SampleConfig\\Configure-AD.ps1\" -Value @\"\n{replaceForNewLineInPowershell(configureAdContent)}\n\"@",
-                $"Set-Content-Path \"C:\\SampleConfig\\Configure-Database.ps1\" -Value @\"\n{replaceForNewLineInPowershell(configureDbContent)}\n\"@",
-                $"Set-Content-Path \"C:\\SampleConfig\\login.sql\" -Value @\"\n{loginSqlContent}\n\"@",
-                $"Set-Content-Path \"C:\\SampleConfig\\Generate-CredSpec.ps1\" -Value @\"\n{replaceForNewLineInPowershell(generateCredspecContent)}\n\"@",
-                $"Set-Content-Path \"C:\\SampleConfig\\Add-ECSContainerInstancesToADGroup.ps1\" -Value @\"\n{replaceForNewLineInPowershell(addEcsInstancesToAdContent)}\n\"@",
+                $"Set-Content -Path \"C:\\SampleConfig\\Configure-AD.ps1\" -Value @\"\n{replaceForNewLineInPowershell(configureAdContent)}\n\"@",
+                $"Set-Content -Path \"C:\\SampleConfig\\Configure-Database.ps1\" -Value @\"\n{replaceForNewLineInPowershell(configureDbContent)}\n\"@",
+                $"Set-Content -Path \"C:\\SampleConfig\\login.sql\" -Value @\"\n{loginSqlContent}\n\"@",
+                $"Set-Content -Path \"C:\\SampleConfig\\Generate-CredSpec.ps1\" -Value @\"\n{replaceForNewLineInPowershell(generateCredspecContent)}\n\"@",
+                $"Set-Content -Path \"C:\\SampleConfig\\Add-ECSContainerInstancesToADGroup.ps1\" -Value @\"\n{replaceForNewLineInPowershell(addEcsInstancesToAdContent)}\n\"@",
                 "Write-Output \"Getting Active Directory credentials...\"",
                 $"$adAdminPasswordSecret = Get-SECSecretValue -SecretId \"{props.ActiveDirectoryAdminPasswordSecret.SecretName}\"",
                 $"$adAdminPassword = ConvertTo-SecureString $adAdminPasswordSecret.SecretString -AsPlainText -Force",
                 $"$gmsaUserSecret = Get-SECSecretValue -SecretId \"{props.CredentialsFetcherIdentitySecret.SecretName}\"",
                 $"$gmsaUserName =  $(ConvertFrom-Json $gmsaUserSecret.SecretString).username",
-                $"$gmsaUserPassword = ConvertTo-SecureString $(ConvertFrom -Json $gmsaUserSecret.SecretString).password -AsPlainText -Force",
+                $"$gmsaUserPassword = ConvertTo-SecureString $(ConvertFrom-Json $gmsaUserSecret.SecretString).password -AsPlainText -Force",
                 $"$sqlServerAdminPasswordSecret = Get-SECSecretValue -SecretId \"${props.SqlServerRdsInstance.Secret?.SecretName}\"",
-                $"$sqlServerAdminUsername = $(ConvertFrom -Json $sqlServerAdminPasswordSecret.SecretString).username",
-                $"$sqlServerAdminPassword = ConvertTo -SecureString $(ConvertFrom -Json $sqlServerAdminPasswordSecret.SecretString).password -AsPlainText -Force",
+                $"$sqlServerAdminUsername = $(ConvertFrom-Json $sqlServerAdminPasswordSecret.SecretString).username",
+                $"$sqlServerAdminPassword = ConvertTo-SecureString $(ConvertFrom-Json $sqlServerAdminPasswordSecret.SecretString).password -AsPlainText -Force",
                 "Write-Output \"Configuring the Active Directory...\"",
                 "C:\\SampleConfig\\Configure-AD.ps1 -AdAdminPassword $adAdminPassword -GmsaUserName $gmsaUserName -GmsaUserPassword $gmsaUserPassword",
                 "Write-Output \"Configuring the database...\"",
@@ -196,7 +196,7 @@ namespace CdkDotnet.NestedStacks
 
         private string ResourceArn(Stack stack, string service, ResourceRegionlessAndAccountless options = null)
         {
-            options = options == null ? new ResourceRegionlessAndAccountless() : options;
+            options = options ?? new ResourceRegionlessAndAccountless();
             var region = options.Regionless == null ? "" : stack.Region;
             var account = options.Accountless == null ? "" : stack.Account;
             return $"arn:{stack.Partition}:{service}:{region}:{account}";
