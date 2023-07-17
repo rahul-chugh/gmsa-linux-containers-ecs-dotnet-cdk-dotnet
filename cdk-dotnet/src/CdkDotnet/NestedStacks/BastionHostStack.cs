@@ -73,7 +73,7 @@ namespace CdkDotnet.NestedStacks
                 $"$gmsaUserSecret = Get-SECSecretValue -SecretId \"{props.CredentialsFetcherIdentitySecret.SecretName}\"",
                 $"$gmsaUserName =  $(ConvertFrom-Json $gmsaUserSecret.SecretString).username",
                 $"$gmsaUserPassword = ConvertTo-SecureString $(ConvertFrom-Json $gmsaUserSecret.SecretString).password -AsPlainText -Force",
-                $"$sqlServerAdminPasswordSecret = Get-SECSecretValue -SecretId \"${props.SqlServerRdsInstance.Secret?.SecretName}\"",
+                $"$sqlServerAdminPasswordSecret = Get-SECSecretValue -SecretId \"{props.SqlServerRdsInstance.Secret?.SecretName}\"",
                 $"$sqlServerAdminUsername = $(ConvertFrom-Json $sqlServerAdminPasswordSecret.SecretString).username",
                 $"$sqlServerAdminPassword = ConvertTo-SecureString $(ConvertFrom-Json $sqlServerAdminPasswordSecret.SecretString).password -AsPlainText -Force",
                 "Write-Output \"Configuring the Active Directory...\"",
@@ -87,7 +87,7 @@ namespace CdkDotnet.NestedStacks
                 "Write-Output \"Installing Microsoft SQL Server Management Studio...\"",
                 "choco install sql-server-management-studio",
                 "Write-Output \"Joining instance to the Active Directory domain...\"",
-                $"Send-SSMCommand -InstanceId(Invoke -WebRequest http://169.254.169.254/latest/meta-data/instance-id -UseBasicParsing).Content -DocumentName {props.DomiainJoinSsmDocument.Ref}"
+                $"Send-SSMCommand -InstanceId(Invoke-WebRequest http://169.254.169.254/latest/meta-data/instance-id -UseBasicParsing).Content -DocumentName {props.DomiainJoinSsmDocument.Ref}"
             );
 
             var windowsServerImage = MachineImage.LatestWindows(WindowsVersion.WINDOWS_SERVER_2022_ENGLISH_FULL_BASE,
