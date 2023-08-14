@@ -1,20 +1,18 @@
 ﻿using Amazon.CDK;
+using Amazon.CDK.AWS.AutoScaling;
 using Amazon.CDK.AWS.DirectoryService;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.ECS;
-using Amazon.CDK.AWS.ECR;
+using Amazon.CDK.AWS.IAM;
 using Amazon.CDK.AWS.SecretsManager;
 using Amazon.CDK.AWS.SSM;
-using Amazon.CDK.AWS.AutoScaling;
-using Amazon.CDK.AWS.IAM;
-using CdkDotnet.StackProperties;
 using CdkDotnet.Models;
+using CdkDotnet.StackProperties;
 using Constructs;
 using System.Collections.Generic;
 using System.Text.Json;
 using static Amazon.CDK.AWS.DirectoryService.CfnMicrosoftAD;
 using static Amazon.CDK.AWS.SSM.CfnAssociation;
-using System;
 
 namespace CdkDotnet.NestedStacks
 {
@@ -35,11 +33,14 @@ namespace CdkDotnet.NestedStacks
         // Reference to the SSM parameter containing the gMSA CredSpec
         public StringParameter CredSpecParameter { get; set; }
 
-        // Reference to the AWS Secret containing the AD user password that can retreive gMSA passwords
-        public Amazon.CDK.AWS.SecretsManager.Secret CredentialsFetcherIdentitySecret { get; set; }
+        // Reference to the AWS Secret containing the AD user password that can retreive gMSA passwords in domainless mode
+        public Amazon.CDK.AWS.SecretsManager.Secret DomainlessIdentitySecret { get; set; }
 
         // Reference to the Security Group used by the Amazon ECS ASG
         public ISecurityGroup EcsAsgSecurityGroup { get; set; }
+
+        // Tag used to automatically join EC2 instances to the AD domain.
+        public string AdDomainJoinTagKey = "ad-domain-join";
 
         // Provides information on the AD objects created or to be created
         public AdInformation AdInfo { get; set; }
@@ -64,7 +65,7 @@ namespace CdkDotnet.NestedStacks
             var vpc = new Vpc(this, "vpc", 
                 new VpcProps 
                 {
-                    Cidr = VPC_SUBNET_CIDR,
+                    IpAddresses = IpAddresses.Cidr(VPC_SUBNET_CIDR),
                     SubnetConfiguration =
                     new SubnetConfiguration[]
                     {
@@ -161,7 +162,7 @@ namespace CdkDotnet.NestedStacks
             );
 
             // Create a secret to hold the AD username and password used by credentials fetcher to authenticate to the AD in scalability mode
-            var credentialsFetcherIdentitySecret = new Amazon.CDK.AWS.SecretsManager.Secret(this, "cred-fetcher-identity-secret",
+            var domainlessUserIdentitySecret = new Amazon.CDK.AWS.SecretsManager.Secret(this, "cred-fetcher-identity-secret",
                 new SecretProps
                 {
                     SecretName = $"{props.SolutionId}/credentials-fetcher-identity",
@@ -169,10 +170,12 @@ namespace CdkDotnet.NestedStacks
                     {
                         ExcludeCharacters = "\"'", // Passwords with quotes are hard to work with on the command line
                         GenerateStringKey = "password",
-                        SecretStringTemplate = JsonSerializer.Serialize(new
-                        {
-                            username = adInfo.GmsaCredentialsFetcherUsername,
-                        }
+                        SecretStringTemplate = JsonSerializer.Serialize(
+                            new
+                            {
+                                username = adInfo.GmsaCredentialsFetcherUsername,
+                                domainName = adInfo.DomainName
+                            }
                         ),
                     }
                 }
@@ -181,15 +184,13 @@ namespace CdkDotnet.NestedStacks
             // Define the User Data for the ASG
             var ecsUserData = UserData.ForLinux();
             ecsUserData.AddCommands(
-                props.DomianJoinedEcsInstances == "0" ? $"echo \"CREDENTIALS_FETCHER_SECRET_NAME_FOR_DOMAINLESS_GMSA={credentialsFetcherIdentitySecret?.SecretName}\" >> /etc/ecs/ecs.config" : "",
-                "echo \"ECS_GMSA_SUPPORTED=true\" >> /etc/ecs/ecs.config",
-                "ps auxwwww",
-                "echo \"sleeping for 60 secs...\"",
-                "sleep 60s", // Needed to avoid RPM lock error      
-                "ps auxwwww",
-                "sudo dnf update -y",
-                "sudo dnf install dotnet realmd oddjob oddjob-mkhomedir sssd adcli krb5-workstation samba-common-tools credentials-fetcher -y",
-                "sudo systemctl start credentials-fetcher"
+              "echo \"ECS_GMSA_SUPPORTED=true\" >> /etc/ecs/ecs.config",
+              "ps auxwwww",
+              "echo \"sleeping for 60 secs...\"",
+              "sleep 60s", // Needed to avoid RPM lock error      
+              "ps auxwwww",
+              "dnf install dotnet realmd oddjob oddjob-mkhomedir sssd adcli krb5-workstation samba-common-tools credentials-fetcher -y",
+              "systemctl start credentials-fetcher"
             );
 
             // Define the ASG
@@ -215,9 +216,6 @@ namespace CdkDotnet.NestedStacks
 
             // Add policy for instances to be managed via SSM
             ecsAutoScalingGroup.Role.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName("AmazonSSMManagedInstanceCore"));
-
-            // Grant access for the credentials fecther secret to the ECS ASG
-            credentialsFetcherIdentitySecret?.GrantRead(ecsAutoScalingGroup.Role);
 
             // Associate the ASG to the ECS cluster
             var ecsCapacityProvider = new AsgCapacityProvider(this, "ecs-cluster-asg-capacity-provider", new AsgCapacityProviderProps
@@ -322,47 +320,48 @@ namespace CdkDotnet.NestedStacks
 
             // ------------------------------------------------------------------------------------------------------------------
             // Configure the ECS cluster instances to join the Managed AD domain
-            //    This will happen only if the appropiate environment variable is set
-            if (props.DomianJoinedEcsInstances != "0")
-            {
 
-                // Create SSM association to run SSM document for all tagged instances
-                var ecsInstanceTagKey = "ad-domain-join";
-                var ecsAssociation = new CfnAssociation(this, "ecs-cluster-asg-domain-join-ssm-association",
-                    new CfnAssociationProps
+            // Create SSM association to run SSM document for all tagged instances
+            var ecsAssociation = new CfnAssociation(this, "ecs-cluster-asg-domain-join-ssm-association",
+                new CfnAssociationProps
+                {
+                    AssociationName = $"{props.SolutionId}-AD-Domian-Join",
+                    Name = domainJoinSsmDocument.Ref,
+                    Targets = new TargetProperty[]
                     {
-                        AssociationName = $"{props.SolutionId}-AD-Domian-Join",
-                        Name = domainJoinSsmDocument.Ref,
-                        Targets = new TargetProperty[]
+                        new TargetProperty
                         {
-                            new TargetProperty
-                            {
-                                Key = $"tag:{ecsInstanceTagKey}",
-                                Values = new [] { props.SolutionId }
-                            }
+                            Key = $"tag:{this.AdDomainJoinTagKey}",
+                            Values = new [] { props.SolutionId }
                         }
                     }
-                );
+                }
+            );
+
+
+            //    This will happen only if the appropiate environment variable is set
+            if (props.DomainJoinEcsInstances)
+            {
 
                 // TODO: Remove when seamless domain join is avaliable for AL2023
                 var ecsAssociationAlt = new CfnAssociation(this, "ecs-cluster-asg-domain-join-ssm-association-alt",
-                    new CfnAssociationProps
+                new CfnAssociationProps
+                {
+                    AssociationName = $"{props.SolutionId}-AD-Domian-Join-Alt",
+                    Name = domainJoinSsmDocumentAtl.Ref,
+                    Targets = new TargetProperty[]
                     {
-                        AssociationName = $"{props.SolutionId}-AD-Domian-Join-Alt",
-                        Name = domainJoinSsmDocumentAtl.Ref,
-                        Targets = new TargetProperty[]
+                        new TargetProperty
                         {
-                            new TargetProperty
-                            {
-                                Key = $"tag:{ecsInstanceTagKey}",
-                                Values = new [] { props.SolutionId }
-                            }
+                            Key = $"tag:{this.AdDomainJoinTagKey}",
+                            Values = new [] { props.SolutionId }
                         }
                     }
-                );
+                }
+            );
 
                 // Applies the tag to the ECS instances
-                Amazon.CDK.Tags.Of(ecsAutoScalingGroup).Add(ecsInstanceTagKey, props.SolutionId);
+                Amazon.CDK.Tags.Of(ecsAutoScalingGroup).Add(this.AdDomainJoinTagKey, props.SolutionId);
 
                 // Grants read access for the seamless domain join secret to the ECS ASG
                 activeDirectorySeamlessJoinSecret.GrantRead(ecsAutoScalingGroup.Role);
@@ -373,34 +372,25 @@ namespace CdkDotnet.NestedStacks
                     new Policy(this, "domain-join-ssm-document-association",
                         new PolicyProps
                         {
-                            Statements = new PolicyStatement[] 
+                            Statements = new PolicyStatement[]
                             {
-                                new PolicyStatement(
-                                    new PolicyStatementProps 
+                            new PolicyStatement(
+                                new PolicyStatementProps
+                                {
+                                    Actions = new string[]
                                     {
-                                        Actions = new string[]
-                                        {
-                                            "ssm:CreateAssociation",
-                                            "ssm:UpdateAssociation"
-                                        },
-                                        
-                                        Resources = new string[] {"*"}, // This is required in order to join any EC2 instance to the Managed AD domain
-                                    }
-                                )
+                                        "ssm:CreateAssociation",
+                                        "ssm:UpdateAssociation"
+                                    },
+
+                                    Resources = new string[] {"*"}, // This is required in order to join any EC2 instance to the Managed AD domain
+                                }
+                            )
                             }
                         }
                     )
                 );
             }
-
-            // ------------------------------------------------------------------------------------------------------------------
-            // Create the container repository for the application
-            var webSiteRepository = new Repository(this, "web-site-repository", 
-                new RepositoryProps
-                {
-                    RepositoryName = $"{props.SolutionId}/web-site",
-                }
-            );
 
             // ------------------------------------------------------------------------------------------------------------------
             // Create an SSM parameter to hold the CredSpec file
@@ -425,7 +415,7 @@ namespace CdkDotnet.NestedStacks
             this.DomiainJoinSsmDocument = domainJoinSsmDocument;
             this.EcsAsgSecurityGroup = ecsAutoScalingGroup.Connections.SecurityGroups[0];
             this.CredSpecParameter = credSpecParameter;
-            this.CredentialsFetcherIdentitySecret = credentialsFetcherIdentitySecret;
+            this.DomainlessIdentitySecret = domainlessUserIdentitySecret;
         }
     }
 }

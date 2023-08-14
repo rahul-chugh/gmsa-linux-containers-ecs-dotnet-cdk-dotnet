@@ -13,9 +13,6 @@ namespace CdkDotnet.NestedStacks
         // Reference to the SQL Server RDS instance created
         public DatabaseInstance SqlServerInstance { get; set; }
 
-        // Reference to the SQL Server RDS instance's  Security Group
-        public ISecurityGroup SqlServerSecurityGroup { get; set; }
-
         // Name of the admin user configured in the RDS SQL Server instance
         public const string SqlServerInstanceAdminUser = "web_dbo";
 
@@ -76,6 +73,10 @@ namespace CdkDotnet.NestedStacks
             cfnSqlServerInstance.Domain = props.ActiveDirectoryId;
             cfnSqlServerInstance.DomainIamRoleName = dbRole.RoleName;
 
+            // Allow communication from then ECS ASG to the RDS SQL Server database
+            sqlServerInstance.Connections.SecurityGroups[0].Connections.AllowFrom(props.EcsAsgSecurityGroup, Port.Tcp(1433));
+
+
             // Output information about the database instance.
             new CfnOutput(this, "DBInstanceIdentifier", new CfnOutputProps { Value = sqlServerInstance.InstanceIdentifier });
             new CfnOutput(this, "DBInstanceEndpointAddress", new CfnOutputProps { Value = sqlServerInstance.DbInstanceEndpointAddress });
@@ -83,7 +84,6 @@ namespace CdkDotnet.NestedStacks
 
             // Exposes the SQL Server instance for higher level constructs
             this.SqlServerInstance = sqlServerInstance;
-            this.SqlServerSecurityGroup = sqlServerInstance.Connections.SecurityGroups[0];
         }
     }
 }

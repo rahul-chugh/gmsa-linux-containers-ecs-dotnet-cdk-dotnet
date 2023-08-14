@@ -42,7 +42,8 @@ namespace CdkDotnet.NestedStacks
             configureAdContent = replaceAdVariables(configureAdContent);
             generateCredspecContent = replaceAdVariables(generateCredspecContent);
             generateCredspecContent = generateCredspecContent
-              .Replace("$SolutionId = \"\"", $"$SolutionId = \"{props.SolutionId}\"");
+              .Replace("$SolutionId = \"\"", $"$SolutionId = \"{props.SolutionId}\"")
+              .Replace("$DomainlessArn = \"\"", $"$DomainlessArn = \"{props.DomainlessIdentitySecret.SecretArn}\"");
             addEcsInstancesToAdContent = replaceAdVariables(addEcsInstancesToAdContent);
             loginSqlContent = loginSqlContent
                 .Replace("ad\\admin", $"{props.AdInfo.DomainName.Split('.')[0]}\\{props.AdInfo.AdminUsername}")
@@ -53,12 +54,16 @@ namespace CdkDotnet.NestedStacks
             userData.AddCommands(
                 "Write-Output \"Installing the Active Directory management tools...\"",
                 "Install-WindowsFeature -Name \"RSAT-AD-Tools\" -IncludeAllSubFeature",
+
                 "Write-Output \"Installing Nuget...\"",
                 "Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force",
+
                 "Write-Output \"Installing CredentialSpec PS module...\"",
                 "Install-Module CredentialSpec -Force",
+
                 "Write-Output \"Installing SqlServer module for Powershell...\"",
                 "Install-Module -Name SqlServer -Force",
+
                 "Write-Output \"Writing support scripts...\"",
                 "Remove-Item \"C:\\SampleConfig\" -Force -Recurse -ErrorAction SilentlyContinue",
                 "New-Item \"C:\\SampleConfig\" -itemType Directory",
@@ -67,27 +72,32 @@ namespace CdkDotnet.NestedStacks
                 $"Set-Content -Path \"C:\\SampleConfig\\login.sql\" -Value @\"\n{loginSqlContent}\n\"@",
                 $"Set-Content -Path \"C:\\SampleConfig\\Generate-CredSpec.ps1\" -Value @\"\n{replaceForNewLineInPowershell(generateCredspecContent)}\n\"@",
                 $"Set-Content -Path \"C:\\SampleConfig\\Add-ECSContainerInstancesToADGroup.ps1\" -Value @\"\n{replaceForNewLineInPowershell(addEcsInstancesToAdContent)}\n\"@",
+                
                 "Write-Output \"Getting Active Directory credentials...\"",
                 $"$adAdminPasswordSecret = Get-SECSecretValue -SecretId \"{props.ActiveDirectoryAdminPasswordSecret.SecretName}\"",
                 $"$adAdminPassword = ConvertTo-SecureString $adAdminPasswordSecret.SecretString -AsPlainText -Force",
-                $"$gmsaUserSecret = Get-SECSecretValue -SecretId \"{props.CredentialsFetcherIdentitySecret.SecretName}\"",
+                $"$gmsaUserSecret = Get-SECSecretValue -SecretId \"{props.DomainlessIdentitySecret.SecretName}\"",
                 $"$gmsaUserName =  $(ConvertFrom-Json $gmsaUserSecret.SecretString).username",
                 $"$gmsaUserPassword = ConvertTo-SecureString $(ConvertFrom-Json $gmsaUserSecret.SecretString).password -AsPlainText -Force",
                 $"$sqlServerAdminPasswordSecret = Get-SECSecretValue -SecretId \"{props.SqlServerRdsInstance.Secret?.SecretName}\"",
                 $"$sqlServerAdminUsername = $(ConvertFrom-Json $sqlServerAdminPasswordSecret.SecretString).username",
                 $"$sqlServerAdminPassword = ConvertTo-SecureString $(ConvertFrom-Json $sqlServerAdminPasswordSecret.SecretString).password -AsPlainText -Force",
+                
                 "Write-Output \"Configuring the Active Directory...\"",
                 "C:\\SampleConfig\\Configure-AD.ps1 -AdAdminPassword $adAdminPassword -GmsaUserName $gmsaUserName -GmsaUserPassword $gmsaUserPassword",
+                
                 "Write-Output \"Configuring the database...\"",
                 $"C:\\SampleConfig\\Configure-Database.ps1 -SqlServerInstanceAddress \"{props.SqlServerRdsInstance.DbInstanceEndpointAddress}\" -SqlServerAdminUsername $sqlServerAdminUsername -SqlServerAdminPassword $sqlServerAdminPassword",
+                
                 "Write-Output \"Installing Chocolatey...\"",
                 "iex((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))",
                 "Import-Module \"$env:ChocolateyInstall\\helpers\\chocolateyInstaller.psm1\"",
                 "choco feature enable -n allowGlobalConfirmation",
+                
                 "Write-Output \"Installing Microsoft SQL Server Management Studio...\"",
                 "choco install sql-server-management-studio",
-                "Write-Output \"Joining instance to the Active Directory domain...\"",
-                $"Send-SSMCommand -InstanceId(Invoke-WebRequest http://169.254.169.254/latest/meta-data/instance-id -UseBasicParsing).Content -DocumentName {props.DomiainJoinSsmDocument.Ref}"
+
+                "Write-Output \"Configuration complete.\""
             );
 
             var windowsServerImage = MachineImage.LatestWindows(WindowsVersion.WINDOWS_SERVER_2022_ENGLISH_FULL_BASE,
@@ -98,7 +108,7 @@ namespace CdkDotnet.NestedStacks
             );
 
             var directoryManagementInstance = new Instance_(this, "active-directory-management-instance",
-                new Amazon.CDK.AWS.EC2.InstanceProps
+                new InstanceProps
                 {
                     InstanceType = InstanceType.Of(InstanceClass.T3, InstanceSize.LARGE),
                     MachineImage = windowsServerImage,
@@ -116,7 +126,7 @@ namespace CdkDotnet.NestedStacks
 
             // Allow the AD management instance access to the Secrets used by the User Data.
             props.ActiveDirectoryAdminPasswordSecret.GrantRead(directoryManagementInstance);
-            props.CredentialsFetcherIdentitySecret.GrantRead(directoryManagementInstance);
+            props.DomainlessIdentitySecret.GrantRead(directoryManagementInstance);
             props.SqlServerRdsInstance.Secret?.GrantRead(directoryManagementInstance);
 
             // Allow the AD management instance to invoke AWS-JoinDirectoryServiceDomain SSM Documment.

@@ -8,5 +8,6 @@ namespace CdkDotnet.StackProperties
         public string SolutionId { get; set; }
         public Vpc Vpc { get; set; }
         public string ActiveDirectoryId { get; set; }
+        public ISecurityGroup EcsAsgSecurityGroup { get; set; }
     }
 }

@@ -10,6 +10,7 @@ namespace CdkDotnet.Models
         public static string MY_SG_INGRESS_IP;
         public static string DEPLOY_APP;
         public static string DOMAIN_JOIN_ECS;
+        public static string APP_TD_REVISION;
 
         static ConfigProps()
         {
@@ -30,8 +31,9 @@ namespace CdkDotnet.Models
             SOLUTION_ID = Environment.GetEnvironmentVariable("SOLUTION_ID") ?? "amazon-ecs-gmsa-linux";
             EC2_INSTANCE_KEYPAIR_NAME = Environment.GetEnvironmentVariable("EC2_INSTANCE_KEYPAIR_NAME");
             MY_SG_INGRESS_IP = Environment.GetEnvironmentVariable("MY_SG_INGRESS_IP");
+            DOMAIN_JOIN_ECS = Environment.GetEnvironmentVariable("DOMAIN_JOIN_ECS") ?? "0";
             DEPLOY_APP = Environment.GetEnvironmentVariable("DEPLOY_APP") ?? "0";
-            DOMAIN_JOIN_ECS = Environment.GetEnvironmentVariable("DOMAIN_JOIN_ECS") ?? "1";
+            APP_TD_REVISION = Environment.GetEnvironmentVariable("APP_TD_REVISION") ?? "2";
         }
     }
 }

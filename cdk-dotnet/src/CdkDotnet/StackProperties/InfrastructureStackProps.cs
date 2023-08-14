@@ -6,6 +6,6 @@ namespace CdkDotnet.StackProperties
     {
         public string SolutionId { get; set; }
         public string EcsInstanceKeyPairName { get; set; }
-        public string DomianJoinedEcsInstances { get; set; }
+        public bool DomainJoinEcsInstances { get; set; }
     }
 }
