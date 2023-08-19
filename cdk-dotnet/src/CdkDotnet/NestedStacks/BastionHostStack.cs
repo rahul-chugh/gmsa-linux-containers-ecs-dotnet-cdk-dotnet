@@ -1,6 +1,7 @@
 ﻿using Amazon.CDK;
 using Amazon.CDK.AWS.EC2;
 using Amazon.CDK.AWS.IAM;
+using Amazon.JSII.Runtime.Deputy;
 using CdkDotnet.Models;
 using CdkDotnet.StackProperties;
 using Constructs;
@@ -210,6 +211,22 @@ namespace CdkDotnet.NestedStacks
             var region = options.Regionless == null ? "" : stack.Region;
             var account = options.Accountless == null ? "" : stack.Account;
             return $"arn:{stack.Partition}:{service}:{region}:{account}";
+        }
+
+        //[JsiiMethod("toYamlString", "{\"type\":{\"primitive\":\"string\"}}", "[{\"name\":\"obj\",\"type\":{\"primitive\":\"any\"}}]", false, false)]
+        public override string ToYamlString(object obj)
+        {
+            var str = base.ToYamlString(obj);
+            str = str.Replace("$DomainlessArn = \"`", "$DomainlessArn = \"");
+            return str;
+        }
+
+        //[JsiiMethod("toJsonString", "{\"type\":{\"primitive\":\"string\"}}", "[{\"name\":\"obj\",\"type\":{\"primitive\":\"any\"}},{\"name\":\"space\",\"optional\":true,\"type\":{\"primitive\":\"number\"}}]", false, false)]
+        public override string ToJsonString(object obj, double? space = null)
+        {
+            var str = base.ToJsonString(obj, space);
+            str = str.Replace("$DomainlessArn = \"`", "$DomainlessArn = \"");
+            return str;
         }
     }
 }
