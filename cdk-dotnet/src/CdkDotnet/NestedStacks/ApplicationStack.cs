@@ -41,8 +41,8 @@ namespace CdkDotnet.NestedStacks
             props.DomainlessIdentitySecret.GrantRead(taskExecutionRole);
 
             // Create the container repository for the application
-            var webSiteRepository = Repository.FromRepositoryAttributes(this, "web-site-repository",
-                new RepositoryAttributes
+            var webSiteRepository = new Repository(this, "web-site-repository",
+                new RepositoryProps
                 {
                     RepositoryName = $"{props.SolutionId}/web-site"
                 }
