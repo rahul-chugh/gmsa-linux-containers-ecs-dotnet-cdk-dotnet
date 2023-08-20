@@ -27,7 +27,8 @@ namespace CdkDotnet
                 {
                     SolutionId = ConfigProps.SOLUTION_ID,
                     Vpc = infraStack.Vpc,
-                    ActiveDirectoryId = infraStack.ActiveDirectory.AttrAlias
+                    ActiveDirectoryId = infraStack.ActiveDirectory.AttrAlias,
+                    EcsAsgSecurityGroup = infraStack.EcsAsgSecurityGroup
                 }
             );
 
