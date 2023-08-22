@@ -168,7 +168,7 @@ namespace CdkDotnet.NestedStacks
                     SecretName = $"{props.SolutionId}/credentials-fetcher-identity",
                     GenerateSecretString = new SecretStringGenerator
                     {
-                        ExcludeCharacters = "\"'", // Passwords with quotes are hard to work with on the command line
+                        ExcludeCharacters = "\"#$%&'()*,:;<>?[\\]^`{|}~", // Passwords with only these characters are permitted for domainless gMSA user: -/_+=.@!. So excluding the other types of characters that secrets manager can generate
                         GenerateStringKey = "password",
                         SecretStringTemplate = JsonSerializer.Serialize(
                             new

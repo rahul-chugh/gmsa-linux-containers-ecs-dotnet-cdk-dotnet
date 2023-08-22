@@ -1,6 +1,6 @@
-## AWS Blog: Using Windows Authentication with gMSA on Linux Containers on Amazon ECS
+## Using Windows Authentication with gMSA on Linux Containers on Amazon ECS
 
-This repository contains sample code for the AWS Blog Post [Using Windows Authentication with gMSA on Linux Containers on Amazon ECS](https://aws.amazon.com/blogs/containers/using-windows-authentication-with-gmsa-on-linux-containers-on-amazon-ecs/). 
+This repository contains sample code for using Windows Authentication with gMSA on Linux Containers on Amazon ECS. To create the infrasrtucture, we have used AWS CDK for .NET and a sample .NET application deployed to ECS Linux containers to showcase the gMSA credentials.
 
 ![Sample solution architecture diagram](/docs/images/architecture.jpg)
 
