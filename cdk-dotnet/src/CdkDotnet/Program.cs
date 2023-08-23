@@ -1,6 +1,7 @@
 ﻿using Amazon.CDK;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace CdkDotnet
@@ -9,6 +10,9 @@ namespace CdkDotnet
     {
         public static void Main(string[] args)
         {
+            // note: will launch debugger every time.
+            //Debugger.Launch();
+
             var app = new App();
             new CdkDotnetStack(app, "CdkDotnetStack", new StackProps
             {

@@ -97,7 +97,7 @@ namespace CdkDotnet.NestedStacks
             var activeDirectoryAdminPasswordSecret = new Amazon.CDK.AWS.SecretsManager.Secret(this, "active-directory-admin-password-secret",
                 new SecretProps
                 {
-                    SecretName = $"/{props.SolutionId}/active-directory-administrator-password",
+                    SecretName = $"{props.SolutionId}/active-directory-administrator-password",
                     GenerateSecretString = new SecretStringGenerator
                     {
                         ExcludeCharacters = "\"'" // Passwords with quotes are hard to work with on the command line.

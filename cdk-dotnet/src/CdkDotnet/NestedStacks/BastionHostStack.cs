@@ -40,6 +40,12 @@ namespace CdkDotnet.NestedStacks
                 return fileContent.Replace("$", "`$");
             };
 
+            var fixQuotes = (string fileContent) =>
+            {
+                fileContent = replaceForNewLineInPowershell(fileContent);
+                return fileContent.Replace("$DomainlessArn = \"`", "$DomainlessArn = \"");
+            };
+
             configureAdContent = replaceAdVariables(configureAdContent);
             generateCredspecContent = replaceAdVariables(generateCredspecContent);
             generateCredspecContent = generateCredspecContent
@@ -71,7 +77,7 @@ namespace CdkDotnet.NestedStacks
                 $"Set-Content -Path \"C:\\SampleConfig\\Configure-AD.ps1\" -Value @\"\n{replaceForNewLineInPowershell(configureAdContent)}\n\"@",
                 $"Set-Content -Path \"C:\\SampleConfig\\Configure-Database.ps1\" -Value @\"\n{replaceForNewLineInPowershell(configureDbContent)}\n\"@",
                 $"Set-Content -Path \"C:\\SampleConfig\\login.sql\" -Value @\"\n{loginSqlContent}\n\"@",
-                $"Set-Content -Path \"C:\\SampleConfig\\Generate-CredSpec.ps1\" -Value @\"\n{replaceForNewLineInPowershell(generateCredspecContent)}\n\"@",
+                $"Set-Content -Path \"C:\\SampleConfig\\Generate-CredSpec.ps1\" -Value @\"\n{fixQuotes(generateCredspecContent)}\n\"@",
                 $"Set-Content -Path \"C:\\SampleConfig\\Add-ECSContainerInstancesToADGroup.ps1\" -Value @\"\n{replaceForNewLineInPowershell(addEcsInstancesToAdContent)}\n\"@",
                 
                 "Write-Output \"Getting Active Directory credentials...\"",
@@ -211,22 +217,6 @@ namespace CdkDotnet.NestedStacks
             var region = options.Regionless == null ? "" : stack.Region;
             var account = options.Accountless == null ? "" : stack.Account;
             return $"arn:{stack.Partition}:{service}:{region}:{account}";
-        }
-
-        //[JsiiMethod("toYamlString", "{\"type\":{\"primitive\":\"string\"}}", "[{\"name\":\"obj\",\"type\":{\"primitive\":\"any\"}}]", false, false)]
-        public override string ToYamlString(object obj)
-        {
-            var str = base.ToYamlString(obj);
-            str = str.Replace("$DomainlessArn = \"`", "$DomainlessArn = \"");
-            return str;
-        }
-
-        //[JsiiMethod("toJsonString", "{\"type\":{\"primitive\":\"string\"}}", "[{\"name\":\"obj\",\"type\":{\"primitive\":\"any\"}},{\"name\":\"space\",\"optional\":true,\"type\":{\"primitive\":\"number\"}}]", false, false)]
-        public override string ToJsonString(object obj, double? space = null)
-        {
-            var str = base.ToJsonString(obj, space);
-            str = str.Replace("$DomainlessArn = \"`", "$DomainlessArn = \"");
-            return str;
         }
     }
 }
