@@ -345,20 +345,20 @@ namespace CdkDotnet.NestedStacks
 
                 // TODO: Remove when seamless domain join is avaliable for AL2023
                 var ecsAssociationAlt = new CfnAssociation(this, "ecs-cluster-asg-domain-join-ssm-association-alt",
-                new CfnAssociationProps
-                {
-                    AssociationName = $"{props.SolutionId}-AD-Domian-Join-Alt",
-                    Name = domainJoinSsmDocumentAtl.Ref,
-                    Targets = new TargetProperty[]
+                    new CfnAssociationProps
                     {
-                        new TargetProperty
+                        AssociationName = $"{props.SolutionId}-AD-Domian-Join-Alt",
+                        Name = domainJoinSsmDocumentAtl.Ref,
+                        Targets = new TargetProperty[]
                         {
-                            Key = $"tag:{this.AdDomainJoinTagKey}",
-                            Values = new [] { props.SolutionId }
+                            new TargetProperty
+                            {
+                                Key = $"tag:{this.AdDomainJoinTagKey}",
+                                Values = new [] { props.SolutionId }
+                            }
                         }
                     }
-                }
-            );
+                );
 
                 // Applies the tag to the ECS instances
                 Amazon.CDK.Tags.Of(ecsAutoScalingGroup).Add(this.AdDomainJoinTagKey, props.SolutionId);

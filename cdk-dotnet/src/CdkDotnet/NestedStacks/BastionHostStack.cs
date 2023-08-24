@@ -209,6 +209,9 @@ namespace CdkDotnet.NestedStacks
                     }
                 )
             );
+
+            // Add appropiate tags to automatically join the EC2 instance to the AD domain.
+            Amazon.CDK.Tags.Of(directoryManagementInstance).Add(props.DomainJoinTag, props.SolutionId);
         }
 
         private string ResourceArn(Stack stack, string service, ResourceRegionlessAndAccountless options = null)
